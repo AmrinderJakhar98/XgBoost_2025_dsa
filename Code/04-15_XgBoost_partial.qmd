@@ -269,7 +269,7 @@ set.seed(931735) # Setting seed to get reproducible results
 weather_split <- initial_split(
   weather, 
   prop = .7, # proption of split same as previous codes
-  strata = strength_gtex  # Stratify by target variable
+  
   )
 weather_split
 ```
@@ -359,14 +359,7 @@ XgBoost **hyperparameters**:\
 - **`trees`**: The number of boosting rounds (i.e., how many trees will be added sequentially). - **`tree_depth`**: Controls how deep each individual tree can grow. Deeper trees can capture more complex interactions but also increase the risk of overfitting. - **`min_n`**: Minimum number of observations required in a node for it to be split. Acts as a regularization tool to prevent overly specific splits. - **`learn_rate`**: Also known as `eta`, it controls how much each additional tree contributes to the overall model. Smaller values make the model more stable but require more trees.
 
 ```{r xgb_spec}
-xgb_spec <- boost_tree(
-  trees = tune(),            # Total number of boosting iterations
-  tree_depth = tune(),       # Maximum depth of each tree
-  min_n = tune(),            # Minimum samples required to split a node
-  learn_rate = tune()        # Step size shrinkage for each boosting step
-) %>%
-  set_engine("xgboost") %>%
-  set_mode("regression")     # Set to "classification" if predicting categories
+xgb_spec <- 
 
 xgb_spec
 
@@ -378,7 +371,7 @@ We use 10-fold cross-validation to evaluate model performance during tuning:
 
 ```{r}
 set.seed(235) #34549
-resampling_foldcv <- vfold_cv(weather_train, # Create 5-fold cross-validation resampling object from training data
+resampling_foldcv <- vfold_cv(weather_train, # Create 10-fold cross-validation resampling object from training data
                               v = 10)
 
 resampling_foldcv
@@ -396,7 +389,7 @@ xgb_grid <- grid_latin_hypercube(
   learn_rate(),      # Step size shrinkage (learning rate)
   trees(),           # Total number of trees (boosting rounds)
   size = 100         # Number of hyperparameter combinations to generate
-)#explain about grid lating hypercune instead of tune grid
+)
 ```
 
 ## 3. Model Tuning
@@ -529,6 +522,7 @@ final_fit %>%
 ## 8. Evaluate on Training Set
 
 ```{r}
+#RMSE
 final_spec %>%
   fit(strength_gtex ~ .,
       data = bake(weather_prep, 
@@ -583,15 +577,15 @@ final_spec %>%
   labs(y = NULL)
 ```
 
-## Summary 
-In this exercise, we covered: 
-- XGBoost algorithm  
-- Model training with ML workflows  
-- Hyperparameter tuning with iterative search  
-- 10-fold cross-validation as the resampling method  
-- Evaluation using RMSE and R² metrics  
-- Model validation with test set performance  
-- Predicted vs observed plots and variable importance  
+## Summary
+
+In this exercise, we covered: - XGBoost algorithm\
+- Model training with ML workflows\
+- Hyperparameter tuning with iterative search\
+- 10-fold cross-validation as the resampling method\
+- Evaluation using RMSE and R² metrics\
+- Model validation with test set performance\
+- Predicted vs observed plots and variable importance
 
 # Further Resources
 
