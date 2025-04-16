@@ -14,8 +14,12 @@ Our learning objectives are to:
     -   Pre-process data
     -   Train an XGBoost model
     -   Tune hyperparameters
-    -   Evaluate model predictability\
+    -   Evaluate model predictability
+
 -   Learn to interpret model performance and feature importance
+-   Learn **parallel processing** with `doParallel`
+-   Explore **grid** and **Latin hypercube** hyperparameter tuning
+-   Use `tune_race_anova()` for efficient **ANOVA-based racing**
 
 # Overview of Regularized Regression Models
 
@@ -88,7 +92,7 @@ Due to these capabilities, XGBoost has become one of the most popular and high-p
 4.  Update the model by adding the new tree’s predictions.
 5.  Repeat steps 2–4 for a set number of iterations or until convergence.
 
-![Boosted Trees](https://bradleyboehmke.github.io/HOML/images/boosted-trees-process.png)
+![Boosted Trees](https://miro.medium.com/v2/resize:fit:720/format:webp/1*eosJ6Yg0epLuH5kHsMaPWQ.png)
 
 # What is Ensemble Learning?
 
@@ -140,6 +144,31 @@ Boosting can work with many loss functions (e.g., MSE, MAE, log loss), as long a
 
 # 🔧 Key XGBoost Hyperparameters
 
+Tree level
+
+## 🔢 Number of Predictors Sampled (`mtry`)
+
+The `mtry` parameter defines how many predictors are randomly chosen at each split. This adds diversity among trees. Typical values range from 1 up to the total number of features. In XGBoost, this is sometimes referred to as `colsample_bytree`.
+
+## ✂️ Loss Reduction
+
+The `loss_reduction` parameter (also called `gamma`) defines the minimum gain required to make a split. If the reduction in loss from a split is less than this value, the split won't happen. This acts as a pruning mechanism to simplify trees and avoid overfitting. Common values range from 0 (no pruning) to 10+ in more conservative models.
+
+## 📦 Minimum Observations in Terminal Nodes
+
+The `min_n` parameter (also known as `min_child_weight`) sets the minimum number of observations required in a terminal node (leaf). It helps control the complexity of the tree. Higher values (e.g., 10 or more) prevent overfitting by stopping splits that rely on very few data points. Lower values (e.g., 1–5) allow for fine-grained patterns to be captured, which might be useful in cases of imbalanced datasets.
+
+![Terminal Node Size](https://miro.medium.com/v2/resize:fit:1400/1*pt7Ei6v6fwQsFUvJY_akcg.png)
+
+## 🌳 Tree Depth
+
+The `tree_depth` parameter defines how deep each individual tree can grow. Deeper trees can capture complex patterns and feature interactions, but they also increase the chance of overfitting. Shallower trees are faster and more general. Typical depths range from 3 to 8, although a depth of 1 (decision stumps) is used in some high-noise or large-scale settings.
+
+![Tree Depth Effect](https://www.baeldung.com/wp-content/uploads/sites/4/2020/05/Screenshot-2020-05-12-at-07.03.52-1024x695.png){alt="Tree Depth Effect"}\
+![Early Stopping Trees](https://bradleyboehmke.github.io/HOML/07-decision-trees_files/figure-html/dt-early-stopping-1.png){alt="Early Stopping Trees"}
+
+Forest Level
+
 ## 🌲 Number of Trees
 
 The `trees` hyperparameter refers to the number of boosting rounds, or how many trees are added one after another. More trees generally mean better performance as errors are corrected at each stage. However, too many trees—especially combined with a high learning rate—can cause overfitting. A good practice is to use cross-validation to find the optimal number of trees. Typical values range from 100 to over 1000.
@@ -150,32 +179,9 @@ The `trees` hyperparameter refers to the number of boosting rounds, or how many 
 
 The `learn_rate` (also called `eta`) controls how much influence each tree has on the final model. It's essentially the step size used in gradient descent. Smaller values (like 0.01) make the model learn slowly and carefully, requiring more trees. Larger values (like 0.3) speed up learning but may increase the risk of overfitting. Common ranges are from 0.01 to 0.3. Lower values typically result in better generalization.
 
-![Gradient Descent Steps](https://bradleyboehmke.github.io/HOML/10-gradient-boosting_files/figure-html/gradient-descent-fig-1.png)
-
-## 🌳 Tree Depth
-
-The `tree_depth` parameter defines how deep each individual tree can grow. Deeper trees can capture complex patterns and feature interactions, but they also increase the chance of overfitting. Shallower trees are faster and more general. Typical depths range from 3 to 8, although a depth of 1 (decision stumps) is used in some high-noise or large-scale settings.
-
-![Tree Depth Effect](https://www.baeldung.com/wp-content/uploads/sites/4/2020/05/Screenshot-2020-05-12-at-07.03.52-1024x695.png)\
-![Early Stopping Trees](https://bradleyboehmke.github.io/HOML/07-decision-trees_files/figure-html/dt-early-stopping-1.png)
-
-## 📦 Minimum Observations in Terminal Nodes
-
-The `min_n` parameter (also known as `min_child_weight`) sets the minimum number of observations required in a terminal node (leaf). It helps control the complexity of the tree. Higher values (e.g., 10 or more) prevent overfitting by stopping splits that rely on very few data points. Lower values (e.g., 1–5) allow for fine-grained patterns to be captured, which might be useful in cases of imbalanced datasets.
-
-![Terminal Node Size](https://miro.medium.com/v2/resize:fit:1400/1*pt7Ei6v6fwQsFUvJY_akcg.png)
-
-## ✂️ Loss Reduction
-
-The `loss_reduction` parameter (also called `gamma`) defines the minimum gain required to make a split. If the reduction in loss from a split is less than this value, the split won't happen. This acts as a pruning mechanism to simplify trees and avoid overfitting. Common values range from 0 (no pruning) to 10+ in more conservative models.
-
-## 🧪 Sample Size
+![Gradient Descent Steps](https://bradleyboehmke.github.io/HOML/10-gradient-boosting_files/figure-html/gradient-descent-fig-1.png) ![](https://kevinvecmanis.io/assets/xgb_tuning/learning.png) \## 🧪 Sample Size
 
 The `sample_size` parameter determines the proportion of the training data used to fit each tree (row subsampling). A value of 1 means all rows are used; values like 0.5–0.8 are commonly used to add randomness and reduce overfitting.
-
-## 🔢 Number of Predictors Sampled (`mtry`)
-
-The `mtry` parameter defines how many predictors are randomly chosen at each split. This adds diversity among trees. Typical values range from 1 up to the total number of features. In XGBoost, this is sometimes referred to as `colsample_bytree`.
 
 # 🌲 XGBoost vs. Random Forest
 
@@ -384,8 +390,8 @@ xgb_grid <- grid_latin_hypercube(
   learn_rate(),      # Step size shrinkage (learning rate)
   trees(),           # Total number of trees (boosting rounds)
   size = 100         # Number of hyperparameter combinations to generate
-)#explain about grid lating hypercune instead of tune grid
-
+)
+#Explain
 xgb_grid
 ```
 
@@ -411,7 +417,6 @@ xgb_res <- tune_race_anova(object = xgb_spec,
                       resamples = resampling_foldcv,
                       grid = xgb_grid,
                       control = control_race(save_pred = TRUE))
-
 stopImplicitCluster()
 
 
@@ -438,7 +443,7 @@ best_rmse
 best_rmse_pct_loss <- xgb_res %>% 
   select_by_pct_loss("min_n",
                      metric = "rmse",
-                     limit = 2
+                     limit = 1
                      )%>% 
   mutate(source = "best_rmse_pct_loss")
 
@@ -465,13 +470,23 @@ best_r2 <- xgb_res %>%
   select_best(metric = "rsq")%>% 
   mutate(source = "best_r2")
 
+best_r2
+```
+
+```{r}
+# Based on lowers R2 within 1% loss
 best_r2_pct_loss <- xgb_res %>% 
   select_by_pct_loss("min_n",
                      metric = "rsq",
-                     limit = 2
+                     limit = 1
                      ) %>% 
   mutate(source = "best_r2_pct_loss")
 
+best_r2_pct_loss
+```
+
+```{r}
+# Based on lowest R2 within 1 se
 best_r2_one_std_error <- xgb_res %>% 
   select_by_one_std_err(metric = "rsq",
                         eval_time = 100,
@@ -479,9 +494,6 @@ best_r2_one_std_error <- xgb_res %>%
                         ) %>%
   mutate(source = "best_r2_one_std_error")
 
-
-best_r2
-best_r2_pct_loss
 best_r2_one_std_error
 ```
 
@@ -532,15 +544,15 @@ final_fit %>%
   collect_metrics()
 ```
 
--R2 & RMSE = 0.2049
+-R2 & RMSE = 0.2049.
 
--   best_r2_pct_loss = 0.2049
+-best_r2_pct_loss = 0.2049.
 
--best_r2_one_std_error = 0.1936
+-best_r2_one_std_error = 0.1936.
 
--best_rmse_pct_loss = 0.1855
+-best_rmse_pct_loss = 0.1855.
 
--best_rmse_one_std_err = 0.1254
+-best_rmse_one_std_err = 0.1254.
 
 ## 8. Evaluate on Training Set
 
@@ -555,16 +567,14 @@ final_spec %>%
   bind_rows(
     
     
-    # R2
-    final_spec %>%
-      fit(strength_gtex ~ .,
-          data = bake(weather_prep, 
-                      weather_train)) %>%
-      augment(new_data = bake(weather_prep, 
-                              weather_train)) %>% 
-      rsq(strength_gtex, .pred)
-    
-  )
+# R2
+final_spec %>%
+  fit(strength_gtex ~ .,
+      data = bake(weather_prep, 
+                  weather_train)) %>%
+  augment(new_data = bake(weather_prep, 
+                          weather_train)) %>% 
+  rsq(strength_gtex, .pred))
 ```
 
 ## 9. Predicted vs Observed Plot
@@ -601,15 +611,25 @@ final_spec %>%
 
 ## Summary
 
-In this exercise, we covered:
+In this exercise, we covered: -XGBoost algorithm.
 
--   XGBoost algorithm\
--   Model training with ML workflows\
--   Hyperparameter tuning with iterative search\
--   10-fold cross-validation as the resampling method\
--   Evaluation using RMSE and R² metrics\
--   Model validation with test set performance\
--   Predicted vs observed plots and variable importance
+-   Model training with ML workflows
+
+-   Hyperparameter tuning with iterative search
+
+-   10-fold cross-validation as the resampling method
+
+-   Evaluation using **RMSE** and **R²** metrics
+
+-   Model validation with test set performance
+
+-   Predicted vs. observed plots and variable importance
+
+-   Learn **parallel processing** with `doParallel`
+
+-   Explore **grid** and **Latin hypercube** hyperparameter tuning
+
+-   Use `tune_race_anova()` for efficient **ANOVA-based racing**
 
 # Further Resources
 

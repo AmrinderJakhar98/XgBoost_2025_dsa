@@ -6,13 +6,26 @@ editor: visual
 
 # Learning Objectives
 
-Our learning objectives are to: - Revise previous models\
-- Understand the XGBoost algorithm\
-- Use the ML framework to: - Pre-process data\
-- Train an XGBoost model\
-- Tune hyperparameters\
-- Evaluate model predictability\
-- Learn to interpret model performance and feature importance
+Our learning objectives are to:
+
+-   Revise previous models
+
+-   Understand the XGBoost algorithm
+
+-   Use the ML framework to:
+
+    -   Pre-process data
+    -   Train an XGBoost model
+    -   Tune hyperparameters
+    -   Evaluate model predictability
+
+-   Learn to interpret model performance and feature importance
+
+-   Learn **parallel processing** with `doParallel`
+
+-   Explore **grid** and **Latin hypercube** hyperparameter tuning
+
+-   Use `tune_race_anova()` for efficient **ANOVA-based racing**
 
 # Overview of Regularized Regression Models
 
@@ -61,11 +74,15 @@ Our learning objectives are to: - Revise previous models\
 
 XGBoost (**Extreme Gradient Boosting**) is a powerful and scalable machine learning algorithm based on **gradient boosting**. It is particularly effective for **tabular or structured data** and is widely used in competitive data science and real-world applications due to its accuracy and speed.
 
-XGBoost is built upon several core concepts: - **Supervised Machine Learning** - **Decision Trees** - **Ensemble Learning** - **Gradient Boosting**
-
 Unlike Random Forest, which builds decision trees independently, XGBoost builds **trees sequentially**, where each new tree aims to **correct the prediction errors** made by the previous trees. It does this by **minimizing a specified loss function** using **gradient descent** techniques.
 
-XGBoost also supports: - **Parallel tree construction** - **Regularization** (to prevent overfitting) - **Handling of missing values** - **Custom loss functions** - **Efficient memory usage and computation**
+XGBoost also supports:
+
+-   **Parallel tree construction**
+-   **Regularization** (to prevent overfitting)
+-   **Handling of missing values**
+-   **Custom loss functions**
+-   **Efficient memory usage and computation**
 
 Due to these capabilities, XGBoost has become one of the most popular and high-performing machine learning libraries for problems involving **regression, classification, and ranking**.
 
@@ -81,7 +98,7 @@ Due to these capabilities, XGBoost has become one of the most popular and high-p
 4.  Update the model by adding the new tree’s predictions.
 5.  Repeat steps 2–4 for a set number of iterations or until convergence.
 
-![Boosted Trees](https://bradleyboehmke.github.io/HOML/images/boosted-trees-process.png)
+![Boosted Trees](https://miro.medium.com/v2/resize:fit:720/format:webp/1*eosJ6Yg0epLuH5kHsMaPWQ.png)
 
 # What is Ensemble Learning?
 
@@ -100,31 +117,11 @@ Ensemble learning combines multiple models (**weak learners**) to build a strong
     -   Each new model improves on the previous by reducing errors.
     -   Example: XGBoost, AdaBoost.
 
-![Boosting Diagram](https://miro.medium.com/v2/resize:fit:1400/format:webp/0*fdDu8RbNLoUzrrlF.jpeg)
-
 ![Stacked Models](https://towardsdatascience.com/wp-content/uploads/2022/05/1VkDaloNLOE0kDp_Y-D0hUg.png)
 
 ![Boosting in Action](https://bradleyboehmke.github.io/HOML/10-gradient-boosting_files/figure-html/boosting-in-action-1.png)
 
 ![Ensemble Boosting](https://www.ibm.com/content/dam/connectedassets-adobe-cms/worldwide-content/creative-assets/s-migr/ul/g/fc/4f/ensemble-learning-boosting.png)
-
-## Why Ensemble Learning Works
-
--   Reduces **variance** (bagging)
--   Reduces **bias** (boosting)
--   Increases **robustness**
--   Generalizes better than individual learners
-
-## Core Steps in Gradient Boosting
-
-1.  **Optimize Loss Function**
-    -   Use a differentiable loss function.
-    -   Minimize it using gradient descent.
-2.  **Train Weak Learners (Trees)**
-    -   Fit trees to residuals/errors from previous steps.
-3.  **Add Trees Sequentially**
-    -   Each tree incrementally improves the prediction.
-    -   Stop when loss reduction plateaus or a tree limit is reached.
 
 # Gradient Descent and Boosting
 
@@ -153,6 +150,31 @@ Boosting can work with many loss functions (e.g., MSE, MAE, log loss), as long a
 
 # 🔧 Key XGBoost Hyperparameters
 
+Tree level
+
+## 🔢 Number of Predictors Sampled (`mtry`)
+
+The `mtry` parameter defines how many predictors are randomly chosen at each split. This adds diversity among trees. Typical values range from 1 up to the total number of features. In XGBoost, this is sometimes referred to as `colsample_bytree`.
+
+## ✂️ Loss Reduction
+
+The `loss_reduction` parameter (also called `gamma`) defines the minimum gain required to make a split. If the reduction in loss from a split is less than this value, the split won't happen. This acts as a pruning mechanism to simplify trees and avoid overfitting. Common values range from 0 (no pruning) to 10+ in more conservative models.
+
+## 📦 Minimum Observations in Terminal Nodes
+
+The `min_n` parameter (also known as `min_child_weight`) sets the minimum number of observations required in a terminal node (leaf). It helps control the complexity of the tree. Higher values (e.g., 10 or more) prevent overfitting by stopping splits that rely on very few data points. Lower values (e.g., 1–5) allow for fine-grained patterns to be captured, which might be useful in cases of imbalanced datasets.
+
+![Terminal Node Size](https://miro.medium.com/v2/resize:fit:1400/1*pt7Ei6v6fwQsFUvJY_akcg.png)
+
+## 🌳 Tree Depth
+
+The `tree_depth` parameter defines how deep each individual tree can grow. Deeper trees can capture complex patterns and feature interactions, but they also increase the chance of overfitting. Shallower trees are faster and more general. Typical depths range from 3 to 8, although a depth of 1 (decision stumps) is used in some high-noise or large-scale settings.
+
+![Tree Depth Effect](https://www.baeldung.com/wp-content/uploads/sites/4/2020/05/Screenshot-2020-05-12-at-07.03.52-1024x695.png){alt="Tree Depth Effect"}\
+![Early Stopping Trees](https://bradleyboehmke.github.io/HOML/07-decision-trees_files/figure-html/dt-early-stopping-1.png){alt="Early Stopping Trees"}
+
+Forest Level
+
 ## 🌲 Number of Trees
 
 The `trees` hyperparameter refers to the number of boosting rounds, or how many trees are added one after another. More trees generally mean better performance as errors are corrected at each stage. However, too many trees—especially combined with a high learning rate—can cause overfitting. A good practice is to use cross-validation to find the optimal number of trees. Typical values range from 100 to over 1000.
@@ -163,38 +185,9 @@ The `trees` hyperparameter refers to the number of boosting rounds, or how many 
 
 The `learn_rate` (also called `eta`) controls how much influence each tree has on the final model. It's essentially the step size used in gradient descent. Smaller values (like 0.01) make the model learn slowly and carefully, requiring more trees. Larger values (like 0.3) speed up learning but may increase the risk of overfitting. Common ranges are from 0.01 to 0.3. Lower values typically result in better generalization.
 
-![Gradient Descent Steps](https://bradleyboehmke.github.io/HOML/10-gradient-boosting_files/figure-html/gradient-descent-fig-1.png)
-
-## 🌳 Tree Depth
-
-The `tree_depth` parameter defines how deep each individual tree can grow. Deeper trees can capture complex patterns and feature interactions, but they also increase the chance of overfitting. Shallower trees are faster and more general. Typical depths range from 3 to 8, although a depth of 1 (decision stumps) is used in some high-noise or large-scale settings.
-
-![Tree Depth Effect](https://www.baeldung.com/wp-content/uploads/sites/4/2020/05/Screenshot-2020-05-12-at-07.03.52-1024x695.png)\
-![Early Stopping Trees](https://bradleyboehmke.github.io/HOML/07-decision-trees_files/figure-html/dt-early-stopping-1.png)
-
-## 📦 Minimum Observations in Terminal Nodes
-
-The `min_n` parameter (also known as `min_child_weight`) sets the minimum number of observations required in a terminal node (leaf). It helps control the complexity of the tree. Higher values (e.g., 10 or more) prevent overfitting by stopping splits that rely on very few data points. Lower values (e.g., 1–5) allow for fine-grained patterns to be captured, which might be useful in cases of imbalanced datasets.
-
-![Terminal Node Size](https://miro.medium.com/v2/resize:fit:1400/1*pt7Ei6v6fwQsFUvJY_akcg.png)
-
-## ✂️ Loss Reduction
-
-The `loss_reduction` parameter (also called `gamma`) defines the minimum gain required to make a split. If the reduction in loss from a split is less than this value, the split won't happen. This acts as a pruning mechanism to simplify trees and avoid overfitting. Common values range from 0 (no pruning) to 10+ in more conservative models.
-
-## 🧪 Sample Size
+![Gradient Descent Steps](https://bradleyboehmke.github.io/HOML/10-gradient-boosting_files/figure-html/gradient-descent-fig-1.png) ![](https://kevinvecmanis.io/assets/xgb_tuning/learning.png) \## 🧪 Sample Size
 
 The `sample_size` parameter determines the proportion of the training data used to fit each tree (row subsampling). A value of 1 means all rows are used; values like 0.5–0.8 are commonly used to add randomness and reduce overfitting.
-
-## 🔢 Number of Predictors Sampled (`mtry`)
-
-The `mtry` parameter defines how many predictors are randomly chosen at each split. This adds diversity among trees. Typical values range from 1 up to the total number of features. In XGBoost, this is sometimes referred to as `colsample_bytree`.
-
-# ⏳ XGBoost for Time Series
-
-For time series tasks: - **Avoid random splits**—preserve temporal order. - **Train on the past**, **test on the future**. - Use **rolling-window cross-validation**. - Engineer **lag features** to capture trends and seasonality.
-
-💡 Tip: XGBoost doesn’t inherently understand time, so you must encode it via lag features or rolling averages.
 
 # 🌲 XGBoost vs. Random Forest
 
@@ -222,6 +215,8 @@ Both algorithms are based on decision trees, but they differ in how the trees ar
 -   Takes longer to train with large datasets
 -   Requires special handling for time-series tasks
 -   Only designed for supervised learning problems
+
+# Quiz - go eLC
 
 # ML Workflow with XGBoost
 
@@ -269,7 +264,7 @@ set.seed(931735) # Setting seed to get reproducible results
 weather_split <- initial_split(
   weather, 
   prop = .7, # proption of split same as previous codes
-  
+  strata = strength_gtex  # Stratify by target variable
   )
 weather_split
 ```
@@ -303,13 +298,14 @@ ggplot() +
 
 ### c. Data processing with recipe
 
-Before training, we need to perform some processing steps, like\
-- normalizing\
-- **removing unimportant variables**\
-- dropping NAs\
-- performing PCA on the go\
-- removing columns with single value\
-- others?
+Before training, we need to perform some processing steps, like
+
+-   normalizing
+-   **removing unimportant variables**
+-   dropping NAs
+-   performing PCA on the go
+-   removing columns with single value
+-   others?
 
 For that, we'll create a **recipe** of these processing steps.
 
@@ -355,12 +351,23 @@ First, let's specify:\
 
 > Elastic nets can only be run for a numerical response variable. XgBoost can be run with either numerical (regression) or categorical (classification) explanatory variable. Therefore, we have the need to specify the mode here.
 
-XgBoost **hyperparameters**:\
-- **`trees`**: The number of boosting rounds (i.e., how many trees will be added sequentially). - **`tree_depth`**: Controls how deep each individual tree can grow. Deeper trees can capture more complex interactions but also increase the risk of overfitting. - **`min_n`**: Minimum number of observations required in a node for it to be split. Acts as a regularization tool to prevent overly specific splits. - **`learn_rate`**: Also known as `eta`, it controls how much each additional tree contributes to the overall model. Smaller values make the model more stable but require more trees.
+XgBoost **hyperparameters**:
+
+-   **`trees`**: The number of boosting rounds (i.e., how many trees will be added sequentially).\
+-   **`tree_depth`**: Controls how deep each individual tree can grow. Deeper trees can capture more complex interactions but also increase the risk of overfitting.\
+-   **`min_n`**: Minimum number of observations required in a node for it to be split. Acts as a regularization tool to prevent overly specific splits.\
+-   **`learn_rate`**: Also known as `eta`, it controls how much each additional tree contributes to the overall model. Smaller values make the model more stable but require more trees.
 
 ```{r xgb_spec}
-xgb_spec <- 
+xgb_spec <- #Specifying XgBoost as our model type, asking to tune the hyperparameters
+   # Total number of boosting iterations
+         # Maximum depth of each tree
+             # Minimum samples required to split a node
+        # Step size shrinkage for each boosting step
 
+        #specify engine 
+  
+       # Set to mode
 xgb_spec
 
 ```
@@ -371,7 +378,7 @@ We use 10-fold cross-validation to evaluate model performance during tuning:
 
 ```{r}
 set.seed(235) #34549
-resampling_foldcv <- vfold_cv(weather_train, # Create 10-fold cross-validation resampling object from training data
+resampling_foldcv <- vfold_cv(weather_train, # Create 5-fold cross-validation resampling object from training data
                               v = 10)
 
 resampling_foldcv
@@ -383,27 +390,32 @@ resampling_foldcv$splits[[1]]
 We use Latin hypercube sampling to generate a diverse grid of hyperparameter combinations:
 
 ```{r }
-xgb_grid <- grid_latin_hypercube(
-  tree_depth(),      # Controls tree complexity
-  min_n(),           # Minimum number of samples needed to split a node
-  learn_rate(),      # Step size shrinkage (learning rate)
-  trees(),           # Total number of trees (boosting rounds)
-  size = 100         # Number of hyperparameter combinations to generate
-)
+xgb_grid <- 
+
+xgb_grid
+```
+
+```{r}
+ggplot(data = xgb_grid,
+       aes(x = tree_depth, 
+           y = min_n)) +
+  geom_point(aes(color = factor(learn_rate),
+                 size = trees),
+             alpha = .5,
+             show.legend = FALSE)
 ```
 
 ## 3. Model Tuning
 
 ```{r xgb_grid_result}
 set.seed(76544)
-registerDoParallel(cores = parallel::detectCores() - 1)
-xgb_res <- tune_race_anova(object = xgb_spec,
+
+xgb_res <- ##(object = xgb_spec,
                       preprocessor = weather_recipe,
                       resamples = resampling_foldcv,
                       grid = xgb_grid,
                       control = control_race(save_pred = TRUE))
 
-stopImplicitCluster()
 
 
 beepr::beep()
@@ -412,7 +424,7 @@ xgb_res$.metrics[[2]]
 
 ## 4. Select Best Models
 
-We select the best models using three strategies (best, within 1 SE, within 2% loss) all thre strategies which we learn in class:
+We select the best models using three strategies (best, within 1 SE, within 2% loss) which we learned in class:
 
 ```{r}
 # Based on lowest RMSE
@@ -420,13 +432,24 @@ best_rmse <- xgb_res %>%
   select_best(metric = "rmse")%>% 
   mutate(source = "best_rmse")
 
+best_rmse
+
+```
+
+```{r}
+# Based on lowers RMSE within 1% loss
 best_rmse_pct_loss <- xgb_res %>% 
   select_by_pct_loss("min_n",
                      metric = "rmse",
-                     limit = 2
+                     limit = 1
                      )%>% 
   mutate(source = "best_rmse_pct_loss")
 
+best_rmse_pct_loss
+```
+
+```{r}
+# Based on lowest RMSE within 1 se
 best_rmse_one_std_err <- xgb_res %>% 
   select_by_one_std_err(metric = "rmse",
                         eval_time = 100,
@@ -434,25 +457,34 @@ best_rmse_one_std_err <- xgb_res %>%
                         )%>% 
   mutate(source = "best_rmse_one_std_err")
 
-best_rmse
-best_rmse_pct_loss
 best_rmse_one_std_err
 ```
 
+Here we use all three methods which we learn in this class for R2.
+
 ```{r}
-#here we use all three methods which we learn in this class
 # Based on greatest R2
 best_r2 <- xgb_res %>% 
   select_best(metric = "rsq")%>% 
   mutate(source = "best_r2")
 
+best_r2
+```
+
+```{r}
+# Based on lowers R2 within 1% loss
 best_r2_pct_loss <- xgb_res %>% 
   select_by_pct_loss("min_n",
                      metric = "rsq",
-                     limit = 2
+                     limit = 1
                      ) %>% 
   mutate(source = "best_r2_pct_loss")
 
+best_r2_pct_loss
+```
+
+```{r}
+# Based on lowest R2 within 1 se
 best_r2_one_std_error <- xgb_res %>% 
   select_by_one_std_err(metric = "rsq",
                         eval_time = 100,
@@ -460,9 +492,6 @@ best_r2_one_std_error <- xgb_res %>%
                         ) %>%
   mutate(source = "best_r2_one_std_error")
 
-
-best_r2
-best_r2_pct_loss
 best_r2_one_std_error
 ```
 
@@ -470,7 +499,11 @@ best_r2_one_std_error
 
 ```{r comparing values}
 best_rmse %>% 
-  bind_rows(best_rmse_pct_loss, best_rmse_one_std_err, best_r2, best_r2_pct_loss, best_r2_one_std_error)
+  bind_rows(best_rmse_pct_loss, 
+            best_rmse_one_std_err, 
+            best_r2, 
+            best_r2_pct_loss, 
+            best_r2_one_std_error)
 ```
 
 ## 5. Final Specification
@@ -490,7 +523,7 @@ final_spec
 
 ## 6. Final Fit and Predictions
 
-##Validation
+## Validation
 
 ```{r final_fit}
 set.seed(10)
@@ -509,20 +542,19 @@ final_fit %>%
   collect_metrics()
 ```
 
--R2 & RMSE = 0.2049
+-R2 & RMSE = 0.2049.
 
--   best_r2_pct_loss = 0.2049
+-best_r2_pct_loss = 0.2049.
 
--best_r2_one_std_error = 0.1936
+-best_r2_one_std_error = 0.1936.
 
--best_rmse_pct_loss = 0.1855
+-best_rmse_pct_loss = 0.1855.
 
--best_rmse_one_std_err = 0.1254
+-best_rmse_one_std_err = 0.1254.
 
 ## 8. Evaluate on Training Set
 
 ```{r}
-#RMSE
 final_spec %>%
   fit(strength_gtex ~ .,
       data = bake(weather_prep, 
@@ -533,16 +565,14 @@ final_spec %>%
   bind_rows(
     
     
-    # R2
-    final_spec %>%
-      fit(strength_gtex ~ .,
-          data = bake(weather_prep, 
-                      weather_train)) %>%
-      augment(new_data = bake(weather_prep, 
-                              weather_train)) %>% 
-      rsq(strength_gtex, .pred)
-    
-  )
+# R2
+final_spec %>%
+  fit(strength_gtex ~ .,
+      data = bake(weather_prep, 
+                  weather_train)) %>%
+  augment(new_data = bake(weather_prep, 
+                          weather_train)) %>% 
+  rsq(strength_gtex, .pred))
 ```
 
 ## 9. Predicted vs Observed Plot
@@ -579,13 +609,25 @@ final_spec %>%
 
 ## Summary
 
-In this exercise, we covered: - XGBoost algorithm\
-- Model training with ML workflows\
-- Hyperparameter tuning with iterative search\
-- 10-fold cross-validation as the resampling method\
-- Evaluation using RMSE and R² metrics\
-- Model validation with test set performance\
-- Predicted vs observed plots and variable importance
+In this exercise, we covered: -XGBoost algorithm.
+
+-   Model training with ML workflows
+
+-   Hyperparameter tuning with iterative search
+
+-   10-fold cross-validation as the resampling method
+
+-   Evaluation using **RMSE** and **R²** metrics
+
+-   Model validation with test set performance
+
+-   Predicted vs. observed plots and variable importance
+
+-   Learn **parallel processing** with `doParallel`
+
+-   Explore **grid** and **Latin hypercube** hyperparameter tuning
+
+-   Use `tune_race_anova()` for efficient **ANOVA-based racing**
 
 # Further Resources
 
@@ -607,3 +649,5 @@ In this exercise, we covered: - XGBoost algorithm\
     An intuitive, beginner-friendly blog post explaining the inner workings of XGBoost with examples and visuals. Great for conceptual clarity before diving into code.
 -   [**Towards Data Science – XGBoost vs RF vs GBM**](https://towardsdatascience.com/xgboost-vs-random-forest-vs-gradient-boosting-74b5fd50e20a)\
     A comparative article that outlines the differences between XGBoost, Random Forest, and Gradient Boosting—helpful for choosing the right model based on your data and objectives.
+
+# Quiz - go eLC
