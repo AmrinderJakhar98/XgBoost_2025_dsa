@@ -15,11 +15,46 @@ Our learning objectives are to:
     -   Train an XGBoost model
     -   Tune hyperparameters
     -   Evaluate model predictability
-
 -   Learn to interpret model performance and feature importance
 -   Learn **parallel processing** with `doParallel`
 -   Explore **grid** and **Latin hypercube** hyperparameter tuning
 -   Use `tune_race_anova()` for efficient **ANOVA-based racing**
+
+### 🖼️ **Visual Mode**
+
+-   **WYSIWYG (What You See Is What You Get) Editor**
+-   You see the document as it will appear when rendered — similar to Microsoft Word or Google Docs.
+-   You can style text with buttons (bold, italic, insert image, etc.) instead of typing Markdown manually.
+-   Great for:
+    -   Beginners
+    -   Those focusing on formatting rather than syntax
+    -   Quick document editing
+
+**Behind the scenes**, it still uses the same Markdown code, but hides it in a more user-friendly interface.
+
+------------------------------------------------------------------------
+
+### 🔄 You Can Switch Anytime
+
+-   Click between the **Source** and **Visual** tabs at the top-left of the editor window.
+-   RStudio will automatically update the document view and underlying code.
+
+------------------------------------------------------------------------
+
+### 🧠 Tip:
+
+For complex technical documents (like your Quarto ML notes), **Source** mode is better for precision and reproducibility.\
+For reports or casual writing, **Visual** mode can speed up formatting.
+
+## Source Mode in RStudio
+
+-   **Source** mode shows the raw code and Markdown syntax.
+-   You write code chunks using backticks (\`\``) and specify the language (e.g.,`{r}\`).
+-   Ideal for reproducibility, debugging, and version control.
+-   Gives you full control over layout, chunk options, and formatting.
+-   Supports inline code (e.g., `r mean(x)`), YAML headers, and Markdown structure (e.g., `##`, `**bold**`).
+
+------------------------------------------------------------------------
 
 # Overview of Regularized Regression Models
 
@@ -79,6 +114,8 @@ XGBoost also supports:
 -   **Efficient memory usage and computation**
 
 Due to these capabilities, XGBoost has become one of the most popular and high-performing machine learning libraries for problems involving **regression, classification, and ranking**.
+
+\#**Regularization** is a technique used in machine learning to **reduce overfitting** by adding a penalty to the #model's complexity. Overfitting happens when a model learns not only the true patterns in the training #data but also the **noise**, leading to poor performance on new (test) data. Regularization discourages #overly complex models by **shrinking or removing less important coefficients**.
 
 ## Key Differences Between Tree Models
 
@@ -140,7 +177,33 @@ In **gradient boosting**, this idea is applied by sequentially fitting new decis
 
 Boosting can work with many loss functions (e.g., MSE, MAE, log loss), as long as they are differentiable.
 
-![Effect of Learning Rate](https://bradleyboehmke.github.io/HOML/10-gradient-boosting_files/figure-html/learning-rate-fig-1.png)
+Now, let’s relate this to gradient boosting (like XGBoost):
+
+📉 1. Loss Function Measures the error between predictions and actual values.
+
+Common loss functions:
+
+RMSE or MSE (for regression)
+
+Log loss (for classification)
+
+Gradient descent minimizes this loss by improving the model step-by-step.
+
+🌳 2. Weak Learner A small decision tree is trained to fit the residuals (the errors) from the previous model.
+
+Why a weak learner? Because boosting combines many simple models to form a strong model.
+
+➕ 3. Sequential Additive Trees Each tree is added one-by-one to correct the errors of the previous tree.
+
+The final model is a sum of all previous trees.
+
+![Effect of Learning Rate](https://bradleyboehmke.github.io/HOML/10-gradient-boosting_files/figure-html/learning-rate-fig-1.png) What’s happening? The model updates are too large (big learning rate).
+
+Result: It overshoots the minimum and keeps bouncing from one side to the other — may fail to converge or diverge altogether.
+
+Right: (b) "Too Small" Learning Rate What’s happening? The model updates are very small (small learning rate).
+
+Result: It takes tiny steps and slowly descends to the minimum. It’s more stable but very slow.
 
 # 🔧 Key XGBoost Hyperparameters
 
@@ -150,13 +213,78 @@ Tree level
 
 The `mtry` parameter defines how many predictors are randomly chosen at each split. This adds diversity among trees. Typical values range from 1 up to the total number of features. In XGBoost, this is sometimes referred to as `colsample_bytree`.
 
+🧠 What is mtry? mtry controls how many predictors (features) are randomly selected to be considered at each split when building a decision tree.
+
+This is done to prevent all trees from being too similar, which improves generalization (reduces overfitting).
+
+🔁 How It Works: At each tree split, instead of using all available predictors, the algorithm:
+
+Randomly samples mtry predictors
+
+Then chooses the best split from this subset only
+
+So, if you have 10 features and mtry = 3, the tree will randomly pick 3 features for each split decision.
+
+🔍 In XGBoost: The corresponding parameter is called colsample_bytree.
+
+It’s the fraction of columns (features) to sample for each tree (not an absolute count).
+
+For example:
+
+colsample_bytree = 1.0 → use all features
+
+colsample_bytree = 0.6 → randomly select 60% of the features per tree
+
+👉 This applies per tree, not per split (although you can also control that with colsample_bylevel or colsample_bynode if needed).
+
+🎯 Why It Matters
+
+Value Type Behavior Higher (e.g., 1.0) Lower bias but risk of overfitting Lower (e.g., 0.5) More randomness, helps prevent overfit ✅ Best Practice Use cross-validation to tune this parameter.
+
+Typical range: 0.3 to 1.0
+
+Helps create diverse trees and boost model robustness
+
 ## ✂️ Loss Reduction
 
 The `loss_reduction` parameter (also called `gamma`) defines the minimum gain required to make a split. If the reduction in loss from a split is less than this value, the split won't happen. This acts as a pruning mechanism to simplify trees and avoid overfitting. Common values range from 0 (no pruning) to 10+ in more conservative models.
 
+The `loss_reduction` parameter (also known as `gamma` in XGBoost) controls how much **minimum loss improvement** is required to allow a split at a tree node.
+
+-   If a split does **not** reduce the loss by at least `gamma`, it is **not allowed**.
+-   This helps to **prune** the tree — i.e., prevent unnecessary splits that may lead to overfitting.
+
+### 🎯 Why Use It?
+
+-   Helps **simplify** the tree
+-   Prevents **overfitting** by allowing only meaningful splits
+-   Acts as a **regularization parameter** — higher values make the model more conservative
+
+### 🔢 Common Range:
+
+-   `0` = No pruning (allow all splits)
+-   `1 – 10+` = Increasing levels of pruning
+
 ## 📦 Minimum Observations in Terminal Nodes
 
 The `min_n` parameter (also known as `min_child_weight`) sets the minimum number of observations required in a terminal node (leaf). It helps control the complexity of the tree. Higher values (e.g., 10 or more) prevent overfitting by stopping splits that rely on very few data points. Lower values (e.g., 1–5) allow for fine-grained patterns to be captured, which might be useful in cases of imbalanced datasets.
+
+The `min_n` parameter (called `min_child_weight` in XGBoost) defines the **minimum number of observations required in a leaf node** (i.e., a terminal node of a tree).
+
+-   If a potential split results in a node with fewer observations than this threshold, the split is **not allowed**.
+-   This acts as a **regularization tool** to control tree growth.
+
+### 🎯 Why It Matters:
+
+-   Prevents the model from learning noise or overfitting to small data segments
+-   Ensures each leaf contains **enough data** to make reliable predictions
+
+### 🔢 Typical Values:
+
+-   **1–5**: Allows deeper trees and more complex models (can help capture detail in imbalanced datasets)
+-   **10+**: Encourages simpler trees and helps reduce overfitting
+
+> Start with a value around 5 and tune using cross-validation depending on your data size and complexity.
 
 ![Terminal Node Size](https://miro.medium.com/v2/resize:fit:1400/1*pt7Ei6v6fwQsFUvJY_akcg.png)
 
@@ -173,15 +301,56 @@ Forest Level
 
 The `trees` hyperparameter refers to the number of boosting rounds, or how many trees are added one after another. More trees generally mean better performance as errors are corrected at each stage. However, too many trees—especially combined with a high learning rate—can cause overfitting. A good practice is to use cross-validation to find the optimal number of trees. Typical values range from 100 to over 1000.
 
-![Tuning Trees](https://bradleyboehmke.github.io/HOML/09-random-forest_files/figure-html/tuning-trees-1.png)
+🧠 What It Means: In XGBoost, the trees parameter (often called nrounds) defines how many decision trees are sequentially added during boosting.
+
+Each new tree is trained to correct the errors made by the previous trees.
+
+This is the heart of boosting: combining weak learners (small trees) to form a strong predictive model.
+
+![Tuning Trees](https://bradleyboehmke.github.io/HOML/09-random-forest_files/figure-html/tuning-trees-1.png) 🔄 What is Cross-Validation? Cross-validation is a model evaluation technique used to check how well your model will perform on unseen data (i.e., how well it generalizes).
+
+Rather than training on one part and testing on another once, cross-validation repeats the process multiple times on different subsets of the data.
+
+📦 Why Use Cross-Validation? To avoid overfitting (too closely fitting your training data)
+
+To get a more reliable estimate of your model's performance
+
+To ensure your model generalizes well to new data
 
 ## ⚡ Learning Rate
 
 The `learn_rate` (also called `eta`) controls how much influence each tree has on the final model. It's essentially the step size used in gradient descent. Smaller values (like 0.01) make the model learn slowly and carefully, requiring more trees. Larger values (like 0.3) speed up learning but may increase the risk of overfitting. Common ranges are from 0.01 to 0.3. Lower values typically result in better generalization.
 
-![Gradient Descent Steps](https://bradleyboehmke.github.io/HOML/10-gradient-boosting_files/figure-html/gradient-descent-fig-1.png) ![](https://kevinvecmanis.io/assets/xgb_tuning/learning.png) \## 🧪 Sample Size
+![Gradient Descent Steps](https://bradleyboehmke.github.io/HOML/10-gradient-boosting_files/figure-html/gradient-descent-fig-1.png) ![](https://kevinvecmanis.io/assets/xgb_tuning/learning.png)\
+🧠 What is it? The learning rate controls how much influence each new tree has on the final prediction.
+
+It’s like the step size in gradient descent — how far the model moves in the direction of the error reduction.
+
+## 🧪 Sample Size
 
 The `sample_size` parameter determines the proportion of the training data used to fit each tree (row subsampling). A value of 1 means all rows are used; values like 0.5–0.8 are commonly used to add randomness and reduce overfitting.
+
+🧠 What Is It? sample_size controls the fraction of the training data rows used to build each tree.
+
+This is called row subsampling — it's like telling XGBoost:
+
+"Hey, don’t use the full dataset each time—just use a random portion."
+
+🔁 How It Works: Suppose you have 10,000 training rows:
+
+If sample_size = 1.0 → each tree sees all 10,000 rows
+
+If sample_size = 0.7 → each tree randomly selects and uses 7,000 rows
+
+Each tree gets a slightly different view of the data, adding variability to the trees, which improves model robustness.
+
+🎯 Why Use It? Reduces overfitting: Trees are less likely to memorize the training data
+
+Improves generalization: Models perform better on new, unseen data
+
+Adds randomness: Like bagging in random forests, it increases model diversity
+
+Speeds up training: Fewer rows = faster computation per tree
 
 # 🌲 XGBoost vs. Random Forest
 
@@ -390,10 +559,26 @@ xgb_grid <- grid_latin_hypercube(
   learn_rate(),      # Step size shrinkage (learning rate)
   trees(),           # Total number of trees (boosting rounds)
   size = 100         # Number of hyperparameter combinations to generate
+  #This line generates 100 random-yet-well-distributed combinations of those parameters for tuning
 )
 #Explain
 xgb_grid
 ```
+
+🎲 What is grid_latin_hypercube()? ➕ Latin Hypercube Sampling (LHS) It’s a smarter random sampling technique for generating values from a multidimensional parameter space.
+
+Think of it as a way to spread out the sample points evenly across each parameter range without testing every possible combo.
+
+It ensures that every range of every parameter is covered at least once, but more efficiently than full grid search.
+
+## ⚖️ Comparison of Hyperparameter Search Methods
+
+| Search Type                                   | Type                   | Description                                                               | Efficient?                              | Strengths                                                             | Weaknesses                                                                  |
+|------------|------------|------------|------------|------------|------------|
+| **Grid Search**                               | Non-iterative (static) | Tests **all combinations** (e.g., 5 × 5 × 5 × 5 = 625)                    | ❌ Very slow if many parameters         | ✅ Complete coverage                                                  | ❌ Computationally expensive                                                |
+| **Random Search**                             | Non-iterative (static) | Picks **combinations randomly**                                           | ✅ Faster, but can miss important zones | ✅ Simple and fast                                                    | ❌ May miss good parameter regions                                          |
+| **Latin Hypercube**                           | Non-iterative (static) | Picks values **randomly but evenly distributed** across parameter space   | ✅✅ Best balance of coverage and speed | ✅ Good spread across search space                                    | ❌ Doesn’t adapt to performance feedback                                    |
+| **Simulated Annealing** (`tune_sim_anneal()`) | Iterative (adaptive)   | Starts randomly, then **explores and refines** based on model performance | ✅ Adaptive search                      | ✅ Escapes local minima <br> ✅ Efficient for large or complex spaces | ❌ Slower tuning <br> ❌ Requires careful tuning (cooling rate, iterations) |
 
 ```{r}
 ggplot(data = xgb_grid,
@@ -404,13 +589,70 @@ ggplot(data = xgb_grid,
              alpha = .5,
              show.legend = FALSE)
 ```
+Bubble color tells you which learn_rate was used
+
+Bubble size shows how many trees (trees) were selected
+
+This is a great exploratory plot to visually confirm that your hyperparameter grid:
+
+Is evenly spread (Latin Hypercube is doing its job ✅)
+
+Includes a variety of values for each parameter
+
+Doesn't cluster too much in one area
+
 
 ## 3. Model Tuning
 
 Explain here tune race ANOVA.
 
+
+
+
+
+Tune race anova 
+🏁 tune_race_anova() — Efficient Hyperparameter Tuning with ANOVA Racing
+🔍 What Is It?
+tune_race_anova() is a performance-guided tuning function that adaptively eliminates poor hyperparameter combinations as the tuning progresses.
+
+It’s based on the racing method, where multiple candidate models "compete," and the worst performers are dropped early using ANOVA tests.
+
+🧠 Why Is It Useful?
+In traditional grid search, you try all combinations, which can be:
+
+🔴 Slow
+
+🔴 Wasteful if some parameter settings are clearly poor
+
+tune_race_anova() solves this by:
+
+⚡ Testing only promising candidates
+
+⚡ Pruning out weak ones early using statistical tests
+
+⚡ Saving computation time and focusing on best-performing combinations
+
+📦 How It Works — Step-by-Step:
+Start with all grid candidates from grid = ...
+
+Evaluate each on a subset of resamples (e.g., fold 1)
+
+Use ANOVA to check if any combinations are clearly worse
+
+Drop underperformers early
+
+Continue racing the remaining candidates through more folds
+
+Return the best-performing set(s)
+
+🔄 It’s like survival of the fittest—each round drops the worst performers.
+
 ```{r xgb_grid_result}
 set.seed(76544)
+
+#Registers a parallel backend using one less than your total available CPU cores
+#This allows tuning (resampling + model fitting) to be run in parallel, speeding up computation
+#Uses the doParallel backend behind the scenes
 registerDoParallel(cores = parallel::detectCores() - 1)
 xgb_res <- tune_race_anova(object = xgb_spec,
                       preprocessor = weather_recipe,
@@ -418,6 +660,8 @@ xgb_res <- tune_race_anova(object = xgb_spec,
                       grid = xgb_grid,
                       control = control_race(save_pred = TRUE))
 stopImplicitCluster()
+#Stops the parallel backend after tuning is complete
+#Frees up system resources
 
 
 beepr::beep()
